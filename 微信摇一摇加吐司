@@ -1,0 +1,147 @@
+# -
+模仿手机微信的摇一摇功能
+public class Frament_3 extends Fragment {
+
+
+    private ImageView imageUp;
+    private ImageView imageDown;
+    private SensorManager sensorManager;
+    private SensorEventListener sensorEventListener;
+    private Sensor sensor;
+    private AnimationSet downAnimationSet;
+    private AnimationSet upAnimationSet;
+    //判断动画是否开始
+    private boolean flag = true;
+    private SoundPool soundPool;
+    private int soundId;
+    private Vibrator vibrator;
+    private Context content;
+    @Nullable
+    @Override
+    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View inflate = inflater.inflate(R.layout.itme_3, container, false);
+        imageUp = inflate.findViewById(R.id.up);
+        imageDown = inflate.findViewById(R.id.drow);
+        initData();
+        initEvent();
+        sensorManager.registerListener(sensorEventListener,sensor,SensorManager.SENSOR_DELAY_NORMAL);
+
+
+        return inflate;
+    }
+
+    private void initData() {
+        //获得传感器的管理器
+        sensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
+        //获得加速度传感器
+        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        //int maxStreams参数一:表示音乐池数量
+        //int streamType 参数二:类型
+        // int srcQuality参数三:资源的质量
+        soundPool = new SoundPool(4, AudioManager.STREAM_MUSIC, 0);
+
+
+        //获得震动的服务
+        vibrator = (Vibrator) getActivity().getSystemService(VIBRATOR_SERVICE);
+
+        //初始化动画()  两个图片同时进行不能共用,
+        //图片最终需要回到原点,因此使用补间动画
+        //上面图片动画集合
+        upAnimationSet = new AnimationSet(true);
+        //上面图片动画
+        //1.先上移
+        TranslateAnimation upUptranslateAnimation = new TranslateAnimation(Animation.RELATIVE_TO_SELF, 0,
+                Animation.RELATIVE_TO_SELF, 0, Animation.RELATIVE_TO_SELF, 0, Animation.RELATIVE_TO_SELF, -0.5f);
+        //设置时间
+        upUptranslateAnimation.setDuration(300);
+        //1.后下移
+        TranslateAnimation upDowntranslateAnimation = new TranslateAnimation(Animation.RELATIVE_TO_SELF, 0,
+                Animation.RELATIVE_TO_SELF, 0, Animation.RELATIVE_TO_SELF, -0.5f, Animation.RELATIVE_TO_SELF, 0);
+        upDowntranslateAnimation.setDuration(300);
+        //设置启动延迟,300ms后开始启动
+        upDowntranslateAnimation.setStartOffset(300);
+        upAnimationSet.addAnimation(upUptranslateAnimation);
+        upAnimationSet.addAnimation(upDowntranslateAnimation);
+        upAnimationSet.setDuration(800);
+        upAnimationSet.setStartOffset(200);
+
+
+        downAnimationSet = new AnimationSet(true);
+        //下面图片的动画
+        //1.先上移
+        TranslateAnimation downUptranslateAnimation = new TranslateAnimation(Animation.RELATIVE_TO_SELF, 0,
+                Animation.RELATIVE_TO_SELF, 0, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0);
+        downUptranslateAnimation.setDuration(300);
+        downUptranslateAnimation.setStartOffset(300);
+        //1.后下移
+        TranslateAnimation downDowntranslateAnimation = new TranslateAnimation(Animation.RELATIVE_TO_SELF, 0,
+                Animation.RELATIVE_TO_SELF, 0, Animation.RELATIVE_TO_SELF, 0, Animation.RELATIVE_TO_SELF, 0.5f);
+        downDowntranslateAnimation.setDuration(300);
+        downAnimationSet.addAnimation(downDowntranslateAnimation);
+        downAnimationSet.addAnimation(downUptranslateAnimation);
+        downAnimationSet.setDuration(800);
+        downAnimationSet.setStartOffset(200);
+
+
+    }
+
+    private void initEvent() {
+        /*传感器事件监听器*/
+        sensorEventListener  =  new SensorEventListener() {
+            //当值发生改变的时候调用
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                float[] values = event.values;
+                //获取控件的值,设置触发条件
+                float x = values[0];
+                float y = values[1];
+                float z = values[2];
+                if(x > 15 || y > 15 || z > 15){//表示摇一摇
+                    if(flag) {//正在执行动画的同时不能再次触发
+                        //播放动画
+                        imageUp.startAnimation(upAnimationSet);
+                        imageDown.startAnimation(downAnimationSet);
+                        //播放小音乐,不用MediaPlayer是因为mediaplayer适合播放耗时的文件,并且比较消耗资源
+                        /**
+                         * int soundID 音乐
+                         * float leftVolume左声道
+                         * float rightVolume 右声道
+                         * int priority
+                         * int loop 循环播放
+                         * float rate 优先级
+                         */
+                        soundPool.play(soundId,1.0f,1.0f,1,1,1.0f);
+                        //震动
+                        //long[] pattern 1,第一次震动延迟的时间 2,第一次震动的持续时间 3,时间间隔 4,第二次震动的时间
+                        //int repeat震动的重复次数 -1表示不重复
+                        vibrator.vibrate(new long[]{400,500,500,500},-1);
+                    }
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+            }
+        };
+        //设置动画监听
+        upAnimationSet.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                flag = false;
+            }
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                flag = true;
+            }
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+            }
+        });
+    }
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        sensorManager.unregisterListener(sensorEventListener);
+    }
+}
